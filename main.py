@@ -3,13 +3,19 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 import httpx
 import re
-import json  # 导入内置json模块
+import json
+import urllib.parse
 
 # ==================== 配置项 ====================
 DISCUZ_API_URL = "http://172.18.0.1/api_qqbot.php"
 # ================================================
 
-@register("astrbot_plugin_jishi", "闻翊羲", "对接校园论坛", "v0.0.5")
+def get_qrcode_url(link):
+    """把帖子链接转成在线二维码图片地址"""
+    enc = urllib.parse.quote(link)
+    return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={enc}"
+
+@register("astrbot_plugin_jishi", "闻翊羲", "校园论坛机器人(带二维码)", "v0.0.6")
 class DiscuzQQ(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -17,10 +23,9 @@ class DiscuzQQ(Star):
 
     async def initialize(self):
         self.client = httpx.AsyncClient(timeout=10)
-        logger.info("[论坛插件] 初始化完成")
+        logger.info("[论坛插件] 初始化完成（二维码版）")
 
     async def call_api(self, action: str, tid: int = None) -> dict:
-        """调用API，清理多余文本后解析JSON"""
         params = {"action": action}
         if tid:
             params["tid"] = tid
@@ -33,40 +38,25 @@ class DiscuzQQ(Star):
                 logger.error(f"API状态码错误：{response.status_code}")
                 return {"code": response.status_code, "msg": f"HTTP错误：{response.status_code}"}
             
-            # 清理返回内容，只保留JSON部分
             raw_text = response.text.strip()
             json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
             if not json_match:
                 logger.error(f"API返回无有效JSON：{raw_text}")
-                return {"code": -2, "msg": "API返回格式错误，无有效JSON"}
+                return {"code": -2, "msg": "API返回格式错误"}
             
             clean_json = json_match.group()
-            logger.info(f"清理后JSON：{clean_json}")
+            data = json.loads(clean_json)
+            return data
             
-            # 用Python内置json解析
-            try:
-                data = json.loads(clean_json)
-                return data
-            except Exception as e:
-                logger.error(f"JSON解析失败：{str(e)}，内容：{clean_json}")
-                return default_error
-                
-        except httpx.ConnectError:
-            logger.error(f"无法连接API：{DISCUZ_API_URL}")
-            return {"code": -3, "msg": "无法连接到论坛API"}
         except Exception as e:
             logger.error(f"API请求异常：{str(e)}")
             return default_error
 
     @filter.command("论坛帮助", aliases=["!论坛帮助", "！论坛帮助"])
     async def help(self, e: AstrMessageEvent):
-        """处理!论坛帮助指令"""
         api_data = await self.call_api("menu")
-        logger.info(f"API返回数据：{api_data}")
-        
         if api_data.get("code") != 0 or "data" not in api_data:
-            error_msg = api_data.get("msg", "获取菜单失败")
-            yield e.plain_result(f"❌ {error_msg}")
+            yield e.plain_result(f"❌ {api_data.get('msg', '获取菜单失败')}")
             return
         
         txt = "📋 论坛机器人指令菜单\n"
@@ -76,58 +66,60 @@ class DiscuzQQ(Star):
 
     @filter.command("最新帖子", aliases=["!最新帖子"])
     async def latest(self, e: AstrMessageEvent):
-        """处理!最新帖子指令（移除URL）"""
         api_data = await self.call_api("latest")
-        
         if api_data.get("code") != 0 or "data" not in api_data:
-            error_msg = api_data.get("msg", "获取最新帖子失败")
-            yield e.plain_result(f"❌ {error_msg}")
+            yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
             return
         
         posts = api_data["data"]
         if not posts:
-            yield e.plain_result("📭 论坛暂无公开帖子")
+            yield e.plain_result("📭 暂无帖子")
             return
-        
+
         txt = "🔍 论坛最新帖子\n"
-        for i, item in enumerate(posts[:10], 1):
-            txt += f"{i}. {item['title']}\n  作者：{item['author']} | 浏览：{item['views']}\n\n"
-        yield e.plain_result(txt.strip()[:1800])
+        qr_list = []
+        for i, item in enumerate(posts[:5], 1):
+            txt += f"{i}. {item['title']}\n   作者：{item['author']}｜浏览：{item['views']}\n"
+            qr_list.append(get_qrcode_url(item['url']))
+        
+        # 先发文字，再发二维码（多条图）
+        yield e.plain_result(txt.strip())
+        for qr in qr_list:
+            yield e.image_result(qr)
 
     @filter.command("热门帖子", aliases=["!热门帖子"])
     async def hot(self, e: AstrMessageEvent):
-        """处理!热门帖子指令（移除URL）"""
         api_data = await self.call_api("hot")
-        
         if api_data.get("code") != 0 or "data" not in api_data:
-            error_msg = api_data.get("msg", "获取热门帖子失败")
-            yield e.plain_result(f"❌ {error_msg}")
+            yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
             return
         
         posts = api_data["data"]
         if not posts:
-            yield e.plain_result("📭 论坛暂无公开帖子")
+            yield e.plain_result("📭 暂无帖子")
             return
-        
+
         txt = "🔥 论坛热门帖子\n"
-        for i, item in enumerate(posts[:10], 1):
-            txt += f"{i}. {item['title']}\n  作者：{item['author']} | 浏览：{item['views']}\n\n"
-        yield e.plain_result(txt.strip()[:1800])
+        qr_list = []
+        for i, item in enumerate(posts[:5], 1):
+            txt += f"{i}. {item['title']}\n   作者：{item['author']}｜浏览：{item['views']}\n"
+            qr_list.append(get_qrcode_url(item['url']))
+        
+        yield e.plain_result(txt.strip())
+        for qr in qr_list:
+            yield e.image_result(qr)
 
     @filter.command("帖子详情", aliases=["!帖子详情"])
     async def detail(self, e: AstrMessageEvent):
-        """处理!帖子详情指令（移除URL）"""
         parts = e.message_str.strip().split()
         if len(parts) != 2 or not parts[1].isdigit():
-            yield e.plain_result("❌ 指令格式错误！\n正确格式：!帖子详情 帖子ID（数字）\n例：!帖子详情 123")
+            yield e.plain_result("❌ 格式：!帖子详情 帖子ID\n例：!帖子详情 1")
             return
         
         tid = int(parts[1])
         api_data = await self.call_api("detail", tid)
-        
         if api_data.get("code") != 0 or "data" not in api_data:
-            error_msg = api_data.get("msg", f"获取ID为{tid}的帖子失败")
-            yield e.plain_result(f"❌ {error_msg}")
+            yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
             return
         
         dt = api_data["data"]
@@ -135,12 +127,16 @@ class DiscuzQQ(Star):
             f"📄 帖子详情（ID：{dt['tid']}）\n"
             f"标题：{dt['title']}\n"
             f"作者：{dt['author']}\n"
-            f"浏览：{dt['views']} | 回复：{dt['replies']}\n"
-            f"内容：{dt['content']}"
+            f"浏览：{dt['views']}｜回复：{dt['replies']}\n"
+            f"内容：{dt['content']}\n\n"
+            f"📱 扫码打开帖子"
         )
+        qr = get_qrcode_url(dt['url'])
+        
+        # 发送文字 + 二维码图片
         yield e.plain_result(txt)
+        yield e.image_result(qr)
 
     async def terminate(self):
         if self.client:
             await self.client.aclose()
-            logger.info("[论坛插件] 已关闭HTTP客户端")
