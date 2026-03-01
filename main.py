@@ -3,12 +3,13 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 import httpx
 import re
+import json  # 新增：导入内置json模块
 
 # ==================== 配置项 ====================
 DISCUZ_API_URL = "http://www.sss526.top/api_qqbot.php"
 # ================================================
 
-@register("astrbot_plugin_jishi", "闻翊羲", "对接校园论坛", "v0.0.3")
+@register("astrbot_plugin_jishi", "闻翊羲", "对接校园论坛", "v0.0.4")
 class DiscuzQQ(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -43,9 +44,9 @@ class DiscuzQQ(Star):
             clean_json = json_match.group()
             logger.info(f"清理后JSON：{clean_json}")
             
-            # 解析JSON
+            # 修复：用Python内置json解析
             try:
-                data = httpx.json.decode(clean_json)
+                data = json.loads(clean_json)
                 return data
             except Exception as e:
                 logger.error(f"JSON解析失败：{str(e)}，内容：{clean_json}")
