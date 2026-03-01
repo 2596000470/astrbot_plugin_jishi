@@ -11,11 +11,10 @@ DISCUZ_API_URL = "http://172.18.0.1/api_qqbot.php"
 # ================================================
 
 def get_qrcode_url(link):
-    """把帖子链接转成在线二维码图片地址"""
     enc = urllib.parse.quote(link)
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={enc}"
 
-@register("astrbot_plugin_jishi", "闻翊羲", "校园论坛机器人(带二维码)", "v0.0.6")
+@register("astrbot_plugin_jishi", "闻翊羲", "校园论坛机器人", "v0.0.7")
 class DiscuzQQ(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -23,7 +22,7 @@ class DiscuzQQ(Star):
 
     async def initialize(self):
         self.client = httpx.AsyncClient(timeout=10)
-        logger.info("[论坛插件] 初始化完成（二维码版）")
+        logger.info("[论坛插件] 初始化完成")
 
     async def call_api(self, action: str, tid: int = None) -> dict:
         params = {"action": action}
@@ -66,6 +65,7 @@ class DiscuzQQ(Star):
 
     @filter.command("最新帖子", aliases=["!最新帖子"])
     async def latest(self, e: AstrMessageEvent):
+        # 只发文字，无二维码、无链接
         api_data = await self.call_api("latest")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -77,18 +77,14 @@ class DiscuzQQ(Star):
             return
 
         txt = "🔍 论坛最新帖子\n"
-        qr_list = []
         for i, item in enumerate(posts[:5], 1):
             txt += f"{i}. {item['title']}\n   作者：{item['author']}｜浏览：{item['views']}\n"
-            qr_list.append(get_qrcode_url(item['url']))
         
-        # 先发文字，再发二维码（多条图）
         yield e.plain_result(txt.strip())
-        for qr in qr_list:
-            yield e.image_result(qr)
 
     @filter.command("热门帖子", aliases=["!热门帖子"])
     async def hot(self, e: AstrMessageEvent):
+        # 只发文字，无二维码、无链接
         api_data = await self.call_api("hot")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -100,17 +96,14 @@ class DiscuzQQ(Star):
             return
 
         txt = "🔥 论坛热门帖子\n"
-        qr_list = []
         for i, item in enumerate(posts[:5], 1):
             txt += f"{i}. {item['title']}\n   作者：{item['author']}｜浏览：{item['views']}\n"
-            qr_list.append(get_qrcode_url(item['url']))
         
         yield e.plain_result(txt.strip())
-        for qr in qr_list:
-            yield e.image_result(qr)
 
     @filter.command("帖子详情", aliases=["!帖子详情"])
     async def detail(self, e: AstrMessageEvent):
+        # 只有详情才发：文字 + 二维码
         parts = e.message_str.strip().split()
         if len(parts) != 2 or not parts[1].isdigit():
             yield e.plain_result("❌ 格式：!帖子详情 帖子ID\n例：!帖子详情 1")
@@ -133,7 +126,6 @@ class DiscuzQQ(Star):
         )
         qr = get_qrcode_url(dt['url'])
         
-        # 发送文字 + 二维码图片
         yield e.plain_result(txt)
         yield e.image_result(qr)
 
