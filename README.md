@@ -1,14 +1,27 @@
-# astrbot-plugin-helloworld
+# 校园论坛QQ机器人插件
+适配AstrBot的Discuz! X3.5论坛查询插件，支持QQ群内快速查询论坛帖子、获取发帖入口，规避QQ外链限制（二维码形式展示链接）。
 
-AstrBot 插件模板 / A template plugin for AstrBot plugin feature
+## 📌 功能列表
+| 指令                | 功能说明                     | 展示形式               |
+|---------------------|------------------------------|------------------------|
+| !论坛帮助           | 查看所有可用指令             | 纯文字                 |
+| !最新帖子           | 查询论坛最新公开帖子      | 纯文字（标题/作者/浏览量） |
+| !热门帖子           | 查询论坛热门公开帖子（按浏览量排序） | 纯文字（标题/作者/浏览量） |
+| !帖子详情 [数字ID]  | 查询指定ID的帖子详情         | 文字+二维码（扫码打开帖子） |
+| !我要发帖           | 获取论坛发帖入口             | 文字+二维码（扫码进入发帖页） |
 
-> [!NOTE]
-> This repo is just a template of [AstrBot](https://github.com/AstrBotDevs/AstrBot) Plugin.
-> 
-> [AstrBot](https://github.com/AstrBotDevs/AstrBot) is an agentic assistant for both personal and group conversations. It can be deployed across dozens of mainstream instant messaging platforms, including QQ, Telegram, Feishu, DingTalk, Slack, LINE, Discord, Matrix, etc. In addition, it provides a reliable and extensible conversational AI infrastructure for individuals, developers, and teams. Whether you need a personal AI companion, an intelligent customer support agent, an automation assistant, or an enterprise knowledge base, AstrBot enables you to quickly build AI applications directly within your existing messaging workflows.
+## 📝 使用说明
+1. 需在QQ群内@机器人发送指令（或机器人已设置为“无需@即可响应”）；
+2. 帖子详情指令格式示例：`!帖子详情 1`（ID为数字，必填）；
+3. 发帖前需先注册论坛账号，扫码后按页面提示操作；
+4. 所有链接均以二维码形式展示，避免QQ外链限制。
 
-# Supports
+## ⚠️ 注意事项
+- 仅支持查询论坛公开帖子，私密/权限帖子无法获取；
+- 二维码由第三方API生成（api.qrserver.com），需确保网络正常；
+- 发帖功能需跳转到论坛网页端完成，机器人仅提供入口。
 
-- [AstrBot Repo](https://github.com/AstrBotDevs/AstrBot)
-- [AstrBot Plugin Development Docs (Chinese)](https://docs.astrbot.app/dev/star/plugin-new.html)
-- [AstrBot Plugin Development Docs (English)](https://docs.astrbot.app/en/dev/star/plugin-new.html)
+## 🎯 适配环境
+- 论坛版本：Discuz! X3.5
+- 机器人框架：AstrBot v4.18.3+
+- 运行环境：Docker容器（PHP5.6+、Nginx）

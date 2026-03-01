@@ -57,7 +57,7 @@ class DiscuzQQ(Star):
 
     @filter.command("论坛帮助", aliases=["!论坛帮助", "！论坛帮助"])
     async def help(self, e: AstrMessageEvent):
-        """展示所有指令菜单（包含新增的「我要发帖」）"""
+        """展示所有指令菜单"""
         api_data = await self.call_api("menu")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取菜单失败')}")
@@ -73,7 +73,7 @@ class DiscuzQQ(Star):
 
     @filter.command("最新帖子", aliases=["!最新帖子"])
     async def latest(self, e: AstrMessageEvent):
-        """查询最新帖子（纯文字，无二维码/链接）"""
+        """查询最新帖子"""
         api_data = await self.call_api("latest")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -92,7 +92,7 @@ class DiscuzQQ(Star):
 
     @filter.command("热门帖子", aliases=["!热门帖子"])
     async def hot(self, e: AstrMessageEvent):
-        """查询热门帖子（纯文字，无二维码/链接）"""
+        """查询热门帖子"""
         api_data = await self.call_api("hot")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -139,7 +139,7 @@ class DiscuzQQ(Star):
 
     @filter.command("我要发帖", aliases=["!我要发帖", "！我要发帖"])
     async def post(self, e: AstrMessageEvent):
-        """新增：我要发帖指令（文字提示+发帖链接二维码）"""
+        """新增：我要发帖指令"""
         # 构造提示文本
         txt = (
             "✍️ 论坛发帖入口\n"
