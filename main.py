@@ -6,7 +6,7 @@ import re
 import json  # 新增：导入内置json模块
 
 # ==================== 配置项 ====================
-DISCUZ_API_URL = "http://www.sss526.top/api_qqbot.php"
+DISCUZ_API_URL = "http://172.18.0.1/api_qqbot.php"
 # ================================================
 
 @register("astrbot_plugin_jishi", "闻翊羲", "对接校园论坛", "v0.0.4")
