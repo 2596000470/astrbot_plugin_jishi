@@ -8,13 +8,16 @@ import urllib.parse
 
 # ==================== 配置项 ====================
 DISCUZ_API_URL = "http://172.18.0.1/api_qqbot.php"
+# 发帖页面链接（固定）
+POST_URL = "https://www.sss526.top/forum.php?mod=misc&action=nav&mobile=2"
 # ================================================
 
 def get_qrcode_url(link):
+    """将链接转为在线二维码图片地址"""
     enc = urllib.parse.quote(link)
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={enc}"
 
-@register("astrbot_plugin_jishi", "闻翊羲", "校园论坛机器人", "v0.0.7")
+@register("astrbot_plugin_jishi", "闻翊羲", "校园论坛机器人", "v0.0.8")
 class DiscuzQQ(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -22,9 +25,10 @@ class DiscuzQQ(Star):
 
     async def initialize(self):
         self.client = httpx.AsyncClient(timeout=10)
-        logger.info("[论坛插件] 初始化完成")
+        logger.info("[论坛插件] 初始化完成（含发帖指令）")
 
     async def call_api(self, action: str, tid: int = None) -> dict:
+        """调用论坛API，返回解析后的JSON数据"""
         params = {"action": action}
         if tid:
             params["tid"] = tid
@@ -53,19 +57,23 @@ class DiscuzQQ(Star):
 
     @filter.command("论坛帮助", aliases=["!论坛帮助", "！论坛帮助"])
     async def help(self, e: AstrMessageEvent):
+        """展示所有指令菜单（包含新增的「我要发帖」）"""
         api_data = await self.call_api("menu")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取菜单失败')}")
             return
         
+        # 补充新增的发帖指令到菜单
         txt = "📋 论坛机器人指令菜单\n"
         for k, v in api_data["data"].items():
             txt += f"{k}：{v}\n"
+        txt += "!我要发帖：获取发帖入口（需先注册）\n"
+        
         yield e.plain_result(txt.strip())
 
     @filter.command("最新帖子", aliases=["!最新帖子"])
     async def latest(self, e: AstrMessageEvent):
-        # 只发文字，无二维码、无链接
+        """查询最新帖子（纯文字，无二维码/链接）"""
         api_data = await self.call_api("latest")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -84,7 +92,7 @@ class DiscuzQQ(Star):
 
     @filter.command("热门帖子", aliases=["!热门帖子"])
     async def hot(self, e: AstrMessageEvent):
-        # 只发文字，无二维码、无链接
+        """查询热门帖子（纯文字，无二维码/链接）"""
         api_data = await self.call_api("hot")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -103,7 +111,7 @@ class DiscuzQQ(Star):
 
     @filter.command("帖子详情", aliases=["!帖子详情"])
     async def detail(self, e: AstrMessageEvent):
-        # 只有详情才发：文字 + 二维码
+        """查询帖子详情（文字+二维码）"""
         parts = e.message_str.strip().split()
         if len(parts) != 2 or not parts[1].isdigit():
             yield e.plain_result("❌ 格式：!帖子详情 帖子ID\n例：!帖子详情 1")
@@ -129,6 +137,24 @@ class DiscuzQQ(Star):
         yield e.plain_result(txt)
         yield e.image_result(qr)
 
+    @filter.command("我要发帖", aliases=["!我要发帖", "！我要发帖"])
+    async def post(self, e: AstrMessageEvent):
+        """新增：我要发帖指令（文字提示+发帖链接二维码）"""
+        # 构造提示文本
+        txt = (
+            "✍️ 论坛发帖入口\n"
+            "⚠️ 提示：发帖前需先注册论坛账号哦！\n\n"
+            "📱 扫码进入发帖页面"
+        )
+        # 生成发帖链接的二维码
+        qr = get_qrcode_url(POST_URL)
+        
+        # 发送文字提示 + 二维码图片
+        yield e.plain_result(txt)
+        yield e.image_result(qr)
+
     async def terminate(self):
+        """关闭HTTP客户端"""
         if self.client:
             await self.client.aclose()
+            logger.info("[论坛插件] 已关闭HTTP客户端")
