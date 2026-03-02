@@ -67,7 +67,7 @@ class DiscuzQQ(Star):
         txt = "📋 论坛机器人指令菜单\n"
         for k, v in api_data["data"].items():
             # 移除菜单中的!前缀
-            clean_k = k.replace("!", "") if k.startswith("!") else k
+            clean_k = k.replace("", "") if k.startswith("!") else k
             txt += f"{clean_k}：{v}\n"
         txt += "我要发帖：获取发帖入口（需先注册）\n"
         
