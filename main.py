@@ -17,7 +17,7 @@ def get_qrcode_url(link):
     enc = urllib.parse.quote(link)
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={enc}"
 
-@register("astrbot_plugin_jishi", "闻翊羲", "校园论坛机器人", "v0.0.8")
+@register("astrbot_plugin_jishi", "闻翊羲", "校园论坛机器人", "v0.0.9")
 class DiscuzQQ(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -25,7 +25,7 @@ class DiscuzQQ(Star):
 
     async def initialize(self):
         self.client = httpx.AsyncClient(timeout=10)
-        logger.info("[论坛插件] 初始化完成（含发帖指令）")
+        logger.info("[论坛插件] 初始化完成（无!指令版）")
 
     async def call_api(self, action: str, tid: int = None) -> dict:
         """调用论坛API，返回解析后的JSON数据"""
@@ -55,25 +55,27 @@ class DiscuzQQ(Star):
             logger.error(f"API请求异常：{str(e)}")
             return default_error
 
-    @filter.command("论坛帮助", aliases=["!论坛帮助", "！论坛帮助"])
+    @filter.command("论坛帮助", aliases=["论坛帮助"])
     async def help(self, e: AstrMessageEvent):
-        """展示所有指令菜单"""
+        """展示所有指令菜单（无!前缀）"""
         api_data = await self.call_api("menu")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取菜单失败')}")
             return
         
-        # 补充新增的发帖指令到菜单
+        # 补充发帖指令到菜单（无!）
         txt = "📋 论坛机器人指令菜单\n"
         for k, v in api_data["data"].items():
-            txt += f"{k}：{v}\n"
-        txt += "!我要发帖：获取发帖入口（需先注册）\n"
+            # 移除菜单中的!前缀
+            clean_k = k.replace("!", "") if k.startswith("!") else k
+            txt += f"{clean_k}：{v}\n"
+        txt += "我要发帖：获取发帖入口（需先注册）\n"
         
         yield e.plain_result(txt.strip())
 
-    @filter.command("最新帖子", aliases=["!最新帖子"])
+    @filter.command("最新帖子", aliases=["最新帖子"])
     async def latest(self, e: AstrMessageEvent):
-        """查询最新帖子"""
+        """查询最新帖子（纯文字，无二维码/链接）"""
         api_data = await self.call_api("latest")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -90,9 +92,9 @@ class DiscuzQQ(Star):
         
         yield e.plain_result(txt.strip())
 
-    @filter.command("热门帖子", aliases=["!热门帖子"])
+    @filter.command("热门帖子", aliases=["热门帖子"])
     async def hot(self, e: AstrMessageEvent):
-        """查询热门帖子"""
+        """查询热门帖子（纯文字，无二维码/链接）"""
         api_data = await self.call_api("hot")
         if api_data.get("code") != 0 or "data" not in api_data:
             yield e.plain_result(f"❌ {api_data.get('msg', '获取失败')}")
@@ -109,12 +111,12 @@ class DiscuzQQ(Star):
         
         yield e.plain_result(txt.strip())
 
-    @filter.command("帖子详情", aliases=["!帖子详情"])
+    @filter.command("帖子详情", aliases=["帖子详情"])
     async def detail(self, e: AstrMessageEvent):
         """查询帖子详情（文字+二维码）"""
         parts = e.message_str.strip().split()
         if len(parts) != 2 or not parts[1].isdigit():
-            yield e.plain_result("❌ 格式：!帖子详情 帖子ID\n例：!帖子详情 1")
+            yield e.plain_result("❌ 格式：帖子详情 帖子ID\n例：帖子详情 1")
             return
         
         tid = int(parts[1])
@@ -137,9 +139,9 @@ class DiscuzQQ(Star):
         yield e.plain_result(txt)
         yield e.image_result(qr)
 
-    @filter.command("我要发帖", aliases=["!我要发帖", "！我要发帖"])
+    @filter.command("我要发帖", aliases=["我要发帖"])
     async def post(self, e: AstrMessageEvent):
-        """新增：我要发帖指令"""
+        """我要发帖指令（文字提示+发帖链接二维码）"""
         # 构造提示文本
         txt = (
             "✍️ 论坛发帖入口\n"
